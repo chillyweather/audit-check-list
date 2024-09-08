@@ -1,16 +1,17 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // This is a counter widget with buttons to increment and decrement the number.
 import { connnected } from "./plug-connected";
 import { disconnected } from "./plug-disconneced";
 
 const { widget } = figma;
-const { useSyncedState, SVG, AutoLayout, Text, useEffect } = widget;
+const { useSyncedState, SVG, AutoLayout, Text } = widget;
 
 const pluginData = figma.root.getSharedPluginDataKeys("audit");
 
 function Widget() {
   const frameName = "Connect to node";
-  const [keys, setKeys] = useSyncedState<string[]>("keys", pluginData);
+  const [keys] = useSyncedState<string[]>("keys", pluginData);
   const [isConnected, setIsConnected] = useSyncedState("isConnected", false);
   const [connectedNodeId, setConnectedNodeId] = useSyncedState(
     "connectedNode",
@@ -42,11 +43,13 @@ function Widget() {
   };
 
   async function markReportDone(nodeId: string, key: string) {
+    console.log("key", key);
     const node = await figma.getNodeByIdAsync(nodeId);
     if (!node || !isAcceptedNodeType(node) || node.children.length === 0)
       return;
 
-    node.children.forEach((element) => {
+    for (const element of node.children) {
+      const id = key.split("_")[0];
       if (element.name.includes(key)) {
         if (!isAcceptedNodeType(element)) return;
         element.strokes = [
@@ -60,8 +63,46 @@ function Widget() {
           },
         ];
         element.strokeWeight = 4;
+
+        const foundElement = await figma.getNodeByIdAsync(id);
+        if (!foundElement) return;
+        const foundElementPage = findCurrentPage(foundElement);
+        if (!foundElementPage) return;
+        const highlight = foundElementPage.findChild(
+          (node) => node.name === `${id}-highlight`
+        );
+        const note = foundElementPage.findChild(
+          (node) => node.name === `${id}-note`
+        );
+        if (!highlight || !note) return;
+        highlight.remove();
+        note.remove();
       }
-    });
+      // let highLightFound = false;
+      // while (!highLightFound) {
+      //   figma.root.children.forEach((page) => {
+      //     page.children.forEach((node) => {
+      //       if (node.name === `${id}-highlight`) {
+      //         highLightFound = true;
+      //         console.log("found");
+      //       }
+      //     });
+      //   });
+      // }
+    }
+  }
+
+  function findCurrentPage(node: any): PageNode | null {
+    if (node.type === "PAGE") {
+      return node;
+    } else {
+      if (node.parent) {
+        const newNode = node.parent;
+        return findCurrentPage(newNode);
+      } else {
+        return null;
+      }
+    }
   }
   function isAcceptedNodeType(
     node: BaseNode
@@ -86,20 +127,15 @@ function Widget() {
         return;
       }
       const selectedNode = selection[0];
-      // const releaseNotesData = selectedNode.getPluginData("releaseNotes");
-      // if (releaseNotesData) {
-      //   const parsedData = JSON.parse(releaseNotesData);
-      //   setReliseData(parsedData);
-      //   setCurrentVersion(1);
-      // }
       setConnectedNodeId(selectedNode.id);
       setConnectedNodeName(selectedNode.name);
       setIsConnected(true);
       if (AcceptedNodeTypes.includes(selectedNode.type)) {
+        //@ts-ignore
         if (selectedNode.children) {
+          //@ts-ignore
           selectedNode.children.forEach((child: any) => {
             const name = child.name;
-            console.log("name>>>>>>>>>>>>>>>>>>>", name);
             if (!name.startsWith("re-")) return;
             setConnectedNodeChildren((prev) => [...prev, name.slice(3)]);
           });
@@ -128,28 +164,6 @@ function Widget() {
         </AutoLayout>
       );
     });
-  }
-
-  function filterKeyList(keys: string[], connectedNodeId: string) {
-    if (!connectedNodeId) return;
-
-    //     const node = await figma.getNodeByIdAsync(connectedNodeId);
-    //     if (!node) return;
-    //     if (!isAcceptedNodeType(node)) return;
-    //     console.log("filtering");
-    //
-    //     const frames = node.children;
-    //
-    //     for (const frame of frames) {
-    //       const name = frame.name.slice(3);
-    //       const foundKey = keys.find((key) => key.includes(name));
-    //       if (foundKey) {
-    //         setFilteredList((prev) => [...prev, foundKey]);
-    //       }
-    //     }
-    //
-    //     const filteredKeyList = buildKeyList(filteredList);
-    //     setFilteredKeyList(filteredKeyList);
   }
 
   return (
@@ -187,7 +201,6 @@ function Widget() {
           // src={isConnected ? linkConnectedVector : linkVector}
           onClick={async () => {
             connectNode();
-            await filterKeyList(pluginData, connectedNodeId);
           }}
         />
       </AutoLayout>
