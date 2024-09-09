@@ -7,11 +7,11 @@ import { disconnected } from "./plug-disconneced";
 const { widget } = figma;
 const { useSyncedState, SVG, AutoLayout, Text } = widget;
 
-const pluginData = figma.root.getSharedPluginDataKeys("audit");
+const pluginDataKeys = figma.root.getSharedPluginDataKeys("audit");
 
 function Widget() {
   const frameName = "Connect to node";
-  const [keys] = useSyncedState<string[]>("keys", pluginData);
+  const [keys] = useSyncedState<string[]>("keys", pluginDataKeys);
   const [isConnected, setIsConnected] = useSyncedState("isConnected", false);
   const [connectedNodeId, setConnectedNodeId] = useSyncedState(
     "connectedNode",
@@ -43,7 +43,6 @@ function Widget() {
   };
 
   async function markReportDone(nodeId: string, key: string) {
-    console.log("key", key);
     const node = await figma.getNodeByIdAsync(nodeId);
     if (!node || !isAcceptedNodeType(node) || node.children.length === 0)
       return;
@@ -78,17 +77,6 @@ function Widget() {
         highlight.remove();
         note.remove();
       }
-      // let highLightFound = false;
-      // while (!highLightFound) {
-      //   figma.root.children.forEach((page) => {
-      //     page.children.forEach((node) => {
-      //       if (node.name === `${id}-highlight`) {
-      //         highLightFound = true;
-      //         console.log("found");
-      //       }
-      //     });
-      //   });
-      // }
     }
   }
 
